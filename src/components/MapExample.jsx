@@ -1,69 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import HighPerformanceMap from './Map/core/HighPerformanceMap.jsx'
-
-const OPENSTREETMAP_STYLE = {
-    version: 8,
-    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf", // הוסף זה
-    sources: {
-        'osm-tiles': {
-            type: 'raster',
-            tiles: [
-                'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors'
-        }
-    },
-    layers: [
-        {
-            id: 'background',
-            type: 'background',
-            paint: {
-                'background-color': '#f0f0f0'
-            }
-        },
-        {
-            id: 'osm-tiles-layer',
-            type: 'raster',
-            source: 'osm-tiles',
-            paint: {
-                'raster-opacity': 1
-            }
-        }
-    ]
-};
-
-// מפה טופוגרפית כאלטרנטיבה
-const TOPO_STYLE = {
-    version: 8,
-    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf", // הוסף זה גם
-    sources: {
-        'topo-tiles': {
-            type: 'raster',
-            tiles: [
-                'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
-                'https://b.tile.opentopomap.org/{z}/{x}/{y}.png',
-                'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors, © OpenTopoMap'
-        }
-    },
-    layers: [
-        {
-            id: 'background',
-            type: 'background',
-            paint: {
-                'background-color': '#f0f0f0'
-            }
-        },
-        {
-            id: 'topo-layer',
-            type: 'raster',
-            source: 'topo-tiles'
-        }
-    ]
-};
+import HighPerformanceMap from './Map/core/HighPerformanceMap.jsx';
+import StyleSelector from './Map/StyleSelector.jsx';
+import { getMapStyle } from './Map/styles'
 
 const PublicMapExample = () => {
     // מצבים
@@ -72,7 +10,7 @@ const PublicMapExample = () => {
     const [lines, setLines] = useState([]);
     const [selectedFeature, setSelectedFeature] = useState(null);
     const [mapInstance, setMapInstance] = useState(null);
-    const [mapStyle, setMapStyle] = useState('osm'); // 'osm' או 'satellite'
+    const [mapStyle, setMapStyle] = useState('osm'); // ברירת מחדל
     const [showLayers, setShowLayers] = useState({
         points: true,
         polygons: true,
@@ -188,7 +126,6 @@ const PublicMapExample = () => {
 
     // טעינת נתוני דוגמה
     useEffect(() => {
-        // סימולציה של טעינת נתונים
         setTimeout(() => {
             setPoints(israelCities);
             setPolygons([telAvivArea]);
@@ -204,7 +141,6 @@ const PublicMapExample = () => {
 
     // מאזין לתזוזת המפה
     const handleMapMove = useCallback((moveData) => {
-        // ניתן לשמור את המיקום הנוכחי
         localStorage.setItem('lastMapPosition', JSON.stringify({
             center: moveData.center,
             zoom: moveData.zoom
@@ -225,7 +161,6 @@ const PublicMapExample = () => {
             data: feature
         });
 
-        // zoom לעיר
         if (mapInstance) {
             mapInstance.flyTo(
                 {
@@ -275,8 +210,9 @@ const PublicMapExample = () => {
     }), []);
 
     // פונקציה לשינוי סגנון המפה
-    const switchMapStyle = useCallback((styleType) => {
-        setMapStyle(styleType);
+    const handleStyleChange = useCallback((styleKey) => {
+        setMapStyle(styleKey);
+        console.log('סגנון מפה השתנה ל:', styleKey);
     }, []);
 
     // פונקציה לטעינת מיקום אחרון
@@ -300,52 +236,32 @@ const PublicMapExample = () => {
                 padding: '15px',
                 borderRadius: '8px',
                 boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                minWidth: '280px',
+                minWidth: '300px',
                 maxHeight: '80vh',
                 overflowY: 'auto'
             }}>
                 <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>בקרת מפה</h3>
 
-                {/* בחירת סגנון מפה */}
-                <div style={{ marginBottom: '15px' }}>
-                    <strong>סגנון מפה:</strong>
-                    <div style={{ marginTop: '5px' }}>
-                        <button
-                            onClick={() => switchMapStyle('osm')}
-                            style={{
-                                padding: '5px 10px',
-                                marginRight: '5px',
-                                backgroundColor: mapStyle === 'osm' ? '#007cba' : '#f0f0f0',
-                                color: mapStyle === 'osm' ? 'white' : 'black',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            רחובות
-                        </button>
-                        <button
-                            onClick={() => switchMapStyle('topo')}
-                            style={{
-                                padding: '5px 10px',
-                                backgroundColor: mapStyle === 'topo' ? '#007cba' : '#f0f0f0',
-                                color: mapStyle === 'topo' ? 'white' : 'black',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            טופוגרפית
-                        </button>
-                    </div>
-                </div>
+                {/* בוחר סגנון מפה */}
+                <StyleSelector
+                    currentStyle={mapStyle}
+                    onStyleChange={handleStyleChange}
+                    layout="buttons"
+                    showIcons={true}
+                    showDescriptions={false}
+                />
 
                 {/* בקרת שכבות */}
                 <div style={{ marginBottom: '15px' }}>
                     <strong>שכבות:</strong>
-                    <div style={{ marginTop: '5px' }}>
+                    <div style={{ marginTop: '8px' }}>
                         {Object.entries(showLayers).map(([layer, visible]) => (
-                            <label key={layer} style={{ display: 'block', marginBottom: '5px' }}>
+                            <label key={layer} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                marginBottom: '8px',
+                                cursor: 'pointer'
+                            }}>
                                 <input
                                     type="checkbox"
                                     checked={visible}
@@ -353,10 +269,15 @@ const PublicMapExample = () => {
                                         ...prev,
                                         [layer]: e.target.checked
                                     }))}
-                                    style={{ marginLeft: '5px' }}
+                                    style={{
+                                        marginLeft: '8px',
+                                        transform: 'scale(1.2)'
+                                    }}
                                 />
-                                {layer === 'points' ? 'ערים' :
-                                    layer === 'polygons' ? 'אזורים' : 'דרכים'}
+                                <span style={{ fontSize: '14px' }}>
+                                    {layer === 'points' ? '🏙️ ערים' :
+                                        layer === 'polygons' ? '🗺️ אזורים' : '🛣️ דרכים'}
+                                </span>
                             </label>
                         ))}
                     </div>
@@ -365,10 +286,16 @@ const PublicMapExample = () => {
                 {/* סטטיסטיקות */}
                 <div style={{ marginBottom: '15px' }}>
                     <strong>סטטיסטיקות:</strong>
-                    <div style={{ fontSize: '14px', marginTop: '5px' }}>
-                        <div>ערים: {points.length}</div>
-                        <div>אזורים: {polygons.length}</div>
-                        <div>דרכים: {lines.length}</div>
+                    <div style={{
+                        fontSize: '14px',
+                        marginTop: '8px',
+                        backgroundColor: '#f8f9fa',
+                        padding: '8px',
+                        borderRadius: '4px'
+                    }}>
+                        <div>📍 ערים: {points.length}</div>
+                        <div>🗺️ אזורים: {polygons.length}</div>
+                        <div>🛣️ דרכים: {lines.length}</div>
                     </div>
                 </div>
 
@@ -376,25 +303,27 @@ const PublicMapExample = () => {
                 {selectedFeature && (
                     <div style={{
                         backgroundColor: '#e8f4fd',
-                        padding: '10px',
-                        borderRadius: '4px',
+                        padding: '12px',
+                        borderRadius: '6px',
                         marginBottom: '15px',
                         border: '1px solid #b3d9ff'
                     }}>
-                        <strong>נבחר:</strong>
-                        <div><strong>סוג:</strong> {selectedFeature.type}</div>
-                        <div><strong>שם:</strong> {selectedFeature.data.properties?.name}</div>
-                        {selectedFeature.data.properties?.population && (
-                            <div><strong>אוכלוסיה:</strong> {selectedFeature.data.properties.population.toLocaleString()}</div>
-                        )}
-                        {selectedFeature.data.properties?.type && (
-                            <div><strong>סוג:</strong> {selectedFeature.data.properties.type}</div>
-                        )}
+                        <strong style={{ color: '#0066cc' }}>✨ נבחר:</strong>
+                        <div style={{ marginTop: '5px' }}>
+                            <div><strong>סוג:</strong> {selectedFeature.type}</div>
+                            <div><strong>שם:</strong> {selectedFeature.data.properties?.name}</div>
+                            {selectedFeature.data.properties?.population && (
+                                <div><strong>אוכלוסיה:</strong> {selectedFeature.data.properties.population.toLocaleString()}</div>
+                            )}
+                            {selectedFeature.data.properties?.type && (
+                                <div><strong>קטגוריה:</strong> {selectedFeature.data.properties.type}</div>
+                            )}
+                        </div>
                     </div>
                 )}
 
                 {/* כפתורי פעולה */}
-                <div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
                         onClick={() => {
                             if (mapInstance) {
@@ -402,32 +331,33 @@ const PublicMapExample = () => {
                             }
                         }}
                         style={{
-                            padding: '8px 12px',
+                            padding: '10px 15px',
                             backgroundColor: '#007cba',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '4px',
+                            borderRadius: '6px',
                             cursor: 'pointer',
-                            width: '100%',
-                            marginBottom: '5px'
+                            fontSize: '14px',
+                            fontWeight: '500'
                         }}
                     >
-                        מרכז ישראל
+                        🇮🇱 מרכז ישראל
                     </button>
 
                     <button
                         onClick={loadLastPosition}
                         style={{
-                            padding: '8px 12px',
+                            padding: '10px 15px',
                             backgroundColor: '#28a745',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '4px',
+                            borderRadius: '6px',
                             cursor: 'pointer',
-                            width: '100%'
+                            fontSize: '14px',
+                            fontWeight: '500'
                         }}
                     >
-                        מיקום אחרון
+                        📍 מיקום אחרון
                     </button>
                 </div>
             </div>
@@ -437,7 +367,8 @@ const PublicMapExample = () => {
                 // הגדרות בסיסיות
                 initialCenter={{ lng: 34.8516, lat: 31.0461 }} // מרכז ישראל
                 initialZoom={8}
-                mapStyle={mapStyle === 'osm' ? OPENSTREETMAP_STYLE : TOPO_STYLE}
+                mapStyle={getMapStyle(mapStyle)} // שימוש בפונקציה מהמודול
+
                 // נתונים - מותנים בהגדרות התצוגה
                 points={showLayers.points ? points : []}
                 polygons={showLayers.polygons ? polygons : []}
@@ -477,7 +408,7 @@ const PublicMapExample = () => {
                     zIndex: 1000,
                     boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                 }}>
-                    <div style={{ fontSize: '18px', marginBottom: '10px' }}>טוען נתוני מפה...</div>
+                    <div style={{ fontSize: '18px', marginBottom: '10px' }}>⏳ טוען נתוני מפה...</div>
                     <div style={{ fontSize: '14px', color: '#666' }}>מכין ערים ואזורים בישראל</div>
                 </div>
             )}
