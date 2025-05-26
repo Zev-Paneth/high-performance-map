@@ -1,7 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import HighPerformanceMap from './Map/core/HighPerformanceMap.jsx';
 import StyleSelector from './Map/StyleSelector.jsx';
-import { getMapStyle } from './Map/styles'
+import { getMapStyle } from './Map/styles';
+
+// ייבוא ה-hooks החדשים
+import { useMapInteractions, useSavedLocations } from './Map/hooks/useMapInteractions.js';
+import { flyToFeature } from './Map/utils/geometryUtils.js'
 
 const PublicMapExample = () => {
     // מצבים
@@ -10,17 +14,42 @@ const PublicMapExample = () => {
     const [lines, setLines] = useState([]);
     const [selectedFeature, setSelectedFeature] = useState(null);
     const [mapInstance, setMapInstance] = useState(null);
-    const [mapStyle, setMapStyle] = useState('osm'); // ברירת מחדל
+    const [mapStyle, setMapStyle] = useState('osm');
     const [showLayers, setShowLayers] = useState({
         points: true,
         polygons: true,
         lines: true
     });
 
-    // נתוני דוגמה - ערים בישראל
+    // שימוש ב-hooks המותאמים
+    const {
+        handlePointClick,
+        handlePolygonClick,
+        handleLineClick,
+        flyToSelectedFeature
+    } = useMapInteractions(mapInstance, setSelectedFeature, {
+        autoFlyTo: true,
+        flyToOptions: { useTurf: true },
+        featureTypeMapping: {
+            'major_city': 'city',
+            'capital': 'city',
+            'city': 'city',
+            'metropolitan_area': 'area',
+            'highway': 'road'
+        }
+    });
+
+    const {
+        saveCurrentLocation,
+        loadSavedLocation,
+        getSavedLocations,
+        deleteSavedLocation
+    } = useSavedLocations(mapInstance);
+
+    // נתוני דוגמה - ערים בישראל (לא משתנה)
     const israelCities = [
         {
-            coordinates: [34.7818, 32.0853], // תל אביב
+            coordinates: [34.7818, 32.0853],
             properties: {
                 name: 'תל אביב',
                 population: 460000,
@@ -30,7 +59,7 @@ const PublicMapExample = () => {
             }
         },
         {
-            coordinates: [35.2137, 31.7683], // ירושלים
+            coordinates: [35.2137, 31.7683],
             properties: {
                 name: 'ירושלים',
                 population: 936000,
@@ -40,7 +69,7 @@ const PublicMapExample = () => {
             }
         },
         {
-            coordinates: [34.9896, 32.7940], // חיפה
+            coordinates: [34.9896, 32.7940],
             properties: {
                 name: 'חיפה',
                 population: 285000,
@@ -50,7 +79,7 @@ const PublicMapExample = () => {
             }
         },
         {
-            coordinates: [34.9518, 32.0853], // נתניה
+            coordinates: [34.9518, 32.0853],
             properties: {
                 name: 'נתניה',
                 population: 230000,
@@ -60,7 +89,7 @@ const PublicMapExample = () => {
             }
         },
         {
-            coordinates: [34.8516, 31.0461], // באר שבע
+            coordinates: [34.8516, 31.0461],
             properties: {
                 name: 'באר שבע',
                 population: 209000,
@@ -70,7 +99,7 @@ const PublicMapExample = () => {
             }
         },
         {
-            coordinates: [35.0818, 32.1853], // פתח תקווה
+            coordinates: [35.0818, 32.1853],
             properties: {
                 name: 'פתח תקווה',
                 population: 247000,
@@ -104,16 +133,16 @@ const PublicMapExample = () => {
         }
     };
 
-    // קו דוגמה - כביש 1 (תל אביב-ירושלים)
+    // קו דוגמה - כביש 1
     const highway1 = {
         type: 'Feature',
         geometry: {
             type: 'LineString',
             coordinates: [
-                [34.7818, 32.0853], // תל אביב
-                [34.8516, 31.8853], // נקודת ביניים
-                [35.0000, 31.8000], // נקודת ביניים
-                [35.2137, 31.7683]  // ירושלים
+                [34.7818, 32.0853],
+                [34.8516, 31.8853],
+                [35.0000, 31.8000],
+                [35.2137, 31.7683]
             ]
         },
         properties: {
@@ -139,11 +168,13 @@ const PublicMapExample = () => {
         setMapInstance(mapData);
     }, []);
 
-    // מאזין לתזוזת המפה
+    // מאזין לתזוזת המפה - עדכון לשמור גם מיקום אוטומטי
     const handleMapMove = useCallback((moveData) => {
+        // שמירה אוטומטית של המיקום האחרון
         localStorage.setItem('lastMapPosition', JSON.stringify({
             center: moveData.center,
-            zoom: moveData.zoom
+            zoom: moveData.zoom,
+            timestamp: Date.now()
         }));
     }, []);
 
@@ -153,45 +184,7 @@ const PublicMapExample = () => {
         setSelectedFeature(null);
     }, []);
 
-    // מאזין ללחיצה על נקודה
-    const handlePointClick = useCallback((feature) => {
-        console.log('נלחץ על נקודה:', feature.properties.name);
-        setSelectedFeature({
-            type: 'עיר',
-            data: feature
-        });
-
-        if (mapInstance) {
-            mapInstance.flyTo(
-                {
-                    lng: feature.geometry.coordinates[0],
-                    lat: feature.geometry.coordinates[1]
-                },
-                12,
-                { duration: 1000 }
-            );
-        }
-    }, [mapInstance]);
-
-    // מאזין ללחיצה על פוליגון
-    const handlePolygonClick = useCallback((feature) => {
-        console.log('נלחץ על פוליגון:', feature.properties.name);
-        setSelectedFeature({
-            type: 'אזור',
-            data: feature
-        });
-    }, []);
-
-    // מאזין ללחיצה על קו
-    const handleLineClick = useCallback((feature) => {
-        console.log('נלחץ על קו:', feature.properties.name);
-        setSelectedFeature({
-            type: 'דרך',
-            data: feature
-        });
-    }, []);
-
-    // פונקציות התאמה לנתונים
+    // פונקציות התאמה לנתונים (לא משתנות)
     const getPointProps = useCallback((point) => ({
         color: point.properties?.color || '#ff0000',
         radius: point.properties?.radius || 6,
@@ -215,12 +208,16 @@ const PublicMapExample = () => {
         console.log('סגנון מפה השתנה ל:', styleKey);
     }, []);
 
-    // פונקציה לטעינת מיקום אחרון
+    // פונקציה לטעינת מיקום אחרון - משופרת
     const loadLastPosition = useCallback(() => {
         const saved = localStorage.getItem('lastMapPosition');
         if (saved && mapInstance) {
-            const position = JSON.parse(saved);
-            mapInstance.flyTo(position.center, position.zoom);
+            try {
+                const position = JSON.parse(saved);
+                mapInstance.flyTo(position.center, position.zoom, { duration: 1000 });
+            } catch (error) {
+                console.error('Error loading last position:', error);
+            }
         }
     }, [mapInstance]);
 
@@ -299,7 +296,7 @@ const PublicMapExample = () => {
                     </div>
                 </div>
 
-                {/* מידע על פיצ'ר נבחר */}
+                {/* מידע על פיצ'ר נבחר - עם כפתור flyTo משופר */}
                 {selectedFeature && (
                     <div style={{
                         backgroundColor: '#e8f4fd',
@@ -319,10 +316,32 @@ const PublicMapExample = () => {
                                 <div><strong>קטגוריה:</strong> {selectedFeature.data.properties.type}</div>
                             )}
                         </div>
+
+                        {/* כפתור flyTo משופר */}
+                        <button
+                            onClick={() => {
+                                flyToSelectedFeature(selectedFeature.data, {
+                                    useTurf: true,
+                                    duration: 1500
+                                });
+                            }}
+                            style={{
+                                marginTop: '8px',
+                                padding: '6px 12px',
+                                backgroundColor: '#0066cc',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '12px'
+                            }}
+                        >
+                            🎯 מרכז במפה
+                        </button>
                     </div>
                 )}
 
-                {/* כפתורי פעולה */}
+                {/* כפתורי פעולה - מעודכנים */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
                         onClick={() => {
@@ -359,22 +378,79 @@ const PublicMapExample = () => {
                     >
                         📍 מיקום אחרון
                     </button>
+
+                    {/* כפתור שמירת מיקום חדש */}
+                    <button
+                        onClick={() => {
+                            const name = `מיקום_${new Date().toLocaleTimeString('he-IL')}`;
+                            if (saveCurrentLocation(name)) {
+                                alert(`המיקום נשמר בשם: ${name}`);
+                            }
+                        }}
+                        style={{
+                            padding: '10px 15px',
+                            backgroundColor: '#ffc107',
+                            color: 'black',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                        }}
+                    >
+                        💾 שמור מיקום נוכחי
+                    </button>
+                </div>
+
+                {/* רשימת מיקומים שמורים */}
+                <div style={{ marginTop: '15px' }}>
+                    <strong>מיקומים שמורים:</strong>
+                    <div style={{ marginTop: '8px', maxHeight: '120px', overflowY: 'auto' }}>
+                        {Object.entries(getSavedLocations()).map(([name, location]) => (
+                            <div key={name} style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '4px 8px',
+                                backgroundColor: '#f8f9fa',
+                                marginBottom: '4px',
+                                borderRadius: '4px',
+                                fontSize: '12px'
+                            }}>
+                                <span style={{ cursor: 'pointer' }} onClick={() => loadSavedLocation(name)}>
+                                    📍 {name}
+                                </span>
+                                <button
+                                    onClick={() => deleteSavedLocation(name)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#dc3545',
+                                        cursor: 'pointer',
+                                        fontSize: '12px'
+                                    }}
+                                >
+                                    ❌
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
             {/* המפה */}
             <HighPerformanceMap
                 // הגדרות בסיסיות
-                initialCenter={{ lng: 34.8516, lat: 31.0461 }} // מרכז ישראל
+                initialCenter={{ lng: 34.8516, lat: 31.0461 }}
                 initialZoom={8}
-                mapStyle={getMapStyle(mapStyle)} // שימוש בפונקציה מהמודול
+                mapStyle={getMapStyle(mapStyle)}
 
                 // נתונים - מותנים בהגדרות התצוגה
                 points={showLayers.points ? points : []}
                 polygons={showLayers.polygons ? polygons : []}
                 lines={showLayers.lines ? lines : []}
 
-                // מאזיני אירועים
+                // מאזיני אירועים - כעת משתמשים ב-hooks
                 onMapLoad={handleMapLoad}
                 onMapMove={handleMapMove}
                 onMapClick={handleMapClick}
