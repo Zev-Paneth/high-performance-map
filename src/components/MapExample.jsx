@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import HighPerformanceMap from './Map/core/HighPerformanceMap.jsx';
 import StyleSelector from './Map/StyleSelector.jsx';
-import { getMapStyle } from './Map/styles';
+import { getMapStyle, updateWMTSUrl } from './Map/styles';
 
 // ייבוא ה-hooks
 import { useMapInteractions, useSavedLocations } from './Map/hooks/useMapInteractions.js';
@@ -14,6 +14,9 @@ const PublicMapExample = () => {
     const [selectedFeature, setSelectedFeature] = useState(null);
     const [mapInstance, setMapInstance] = useState(null);
     const [mapStyle, setMapStyle] = useState('osm'); // ברירת מחדל OSM
+    const [wmtsConfig, setWmtsConfig] = useState({
+        url: 'https://your-server.com/tiles/{z}/{x}/{y}.png', // פשוט ה-URL הקיים שלך
+    });
     const [showLayers, setShowLayers] = useState({
         points: true,
         polygons: true,
@@ -173,7 +176,7 @@ const PublicMapExample = () => {
         localStorage.setItem('lastMapPosition', JSON.stringify({
             center: moveData.center,
             zoom: moveData.zoom,
-            style: mapStyle, // שמירת הסגנון גם
+            style: mapStyle,
             timestamp: Date.now()
         }));
     }, [mapStyle]);
@@ -210,7 +213,6 @@ const PublicMapExample = () => {
                 const position = JSON.parse(saved);
                 mapInstance.flyTo(position.center, position.zoom, { duration: 1000 });
 
-                // אם נשמר גם סגנון - נעדכן אותו
                 if (position.style && position.style !== mapStyle) {
                     setMapStyle(position.style);
                 }
@@ -238,6 +240,22 @@ const PublicMapExample = () => {
         }
     }, []);
 
+    // עדכון הגדרות WMTS
+    const updateWMTSConfig = useCallback(() => {
+        if (mapStyle === 'wmts_wgs84') {
+            updateWMTSUrl(wmtsConfig.url, {
+                attribution: '© Your WMTS Server'
+            });
+        }
+    }, [mapStyle, wmtsConfig]);
+
+    // עדכון אוטומטי של WMTS כשמשנים הגדרות
+    useEffect(() => {
+        if (mapStyle === 'wmts_wgs84') {
+            updateWMTSConfig();
+        }
+    }, [wmtsConfig, mapStyle, updateWMTSConfig]);
+
     return (
         <div style={{ height: '100%', width: '100%'}}>
             {/* פאנל בקרה */}
@@ -256,18 +274,56 @@ const PublicMapExample = () => {
             }}>
                 <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>🗺️ בקרת מפה</h3>
 
-                {/* בוחר סגנונות - כעת עם כל האפשרויות */}
+                {/* בוחר סגנונות - כעת עם WMTS WGS84 */}
                 <StyleSelector
                     currentStyle={mapStyle}
                     onStyleChange={handleStyleChange}
-                    layout="buttons" // או "dropdown"
+                    layout="buttons"
                     showIcons={true}
                     showDescriptions={false}
                     compact={false}
                     columns={2}
                 />
 
-                {/* הוראות עבור WMTS */}
+                {/* הגדרות WMTS WGS84 - פשוט */}
+                {mapStyle === 'wmts_wgs84' && (
+                    <div style={{
+                        marginBottom: '15px',
+                        padding: '15px',
+                        backgroundColor: '#e8f5e8',
+                        borderRadius: '8px',
+                        border: '2px solid #4caf50'
+                    }}>
+                        <strong style={{ color: '#2e7d32', display: 'block', marginBottom: '10px' }}>
+                            🌐 הגדרות WMTS
+                        </strong>
+
+                        <div style={{ marginBottom: '8px' }}>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '3px' }}>
+                                URL אריחים:
+                            </label>
+                            <input
+                                type="text"
+                                value={wmtsConfig.url}
+                                onChange={(e) => setWmtsConfig(prev => ({ ...prev, url: e.target.value }))}
+                                placeholder="https://your-server.com/tiles/{z}/{x}/{y}.png"
+                                style={{
+                                    width: '100%',
+                                    padding: '6px 8px',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                    fontSize: '11px'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ fontSize: '10px', color: '#555', marginTop: '8px' }}>
+                            💡 <strong>טיפ:</strong> השתמש ב-URL שעבד לך ב-Leaflet
+                        </div>
+                    </div>
+                )}
+
+                {/* הוראות עבור WMTS Web Mercator */}
                 {mapStyle === 'wmts' && (
                     <div style={{
                         marginBottom: '15px',
@@ -277,7 +333,7 @@ const PublicMapExample = () => {
                         border: '1px solid #ffeaa7',
                         fontSize: '12px'
                     }}>
-                        <strong>🔧 הגדרת WMTS:</strong>
+                        <strong>🔧 WMTS Web Mercator:</strong>
                         <div style={{ marginTop: '5px', color: '#856404' }}>
                             עדכן את ה-URL ב-MapStyles.js:<br/>
                             <code style={{ fontSize: '10px' }}>
@@ -525,7 +581,7 @@ const PublicMapExample = () => {
                 // הגדרות בסיסיות
                 initialCenter={{ lng: 34.8516, lat: 31.0461 }}
                 initialZoom={8}
-                mapStyle={getMapStyle(mapStyle)} // שימוש בסגנון הנבחר
+                mapStyle={getMapStyle(mapStyle)}
 
                 // נתונים - מותנים בהגדרות התצוגה
                 points={showLayers.points ? points : []}

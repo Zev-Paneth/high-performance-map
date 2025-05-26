@@ -1,5 +1,5 @@
 // src/components/Map/styles/MapStyles.js
-// עדכון להוספת WMTS לרקעים הקיימים
+// עדכון להוספת WMTS WGS84 לרקעים הקיימים
 
 // סגנון OSM הקיים
 export const OSM_STYLE = {
@@ -112,18 +112,56 @@ export const TERRAIN_STYLE = {
     ]
 };
 
-// הוספת סגנון WMTS החדש
+// סגנון WMTS WGS84 החדש - מותאם למערכת קואורדינטות WGS84
+export const WMTS_WGS84_STYLE = {
+    version: 8,
+    name: 'WMTS WGS84',
+    // הסרת glyphs כדי למנוע שגיאות פונטים
+    sources: {
+        'wmts-wgs84-tiles': {
+            type: 'raster',
+            tiles: [
+                // URL לדוגמה - החלף ל-URL האמיתי שלך
+                'https://your-wmts-server.com/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=your_layer&STYLE=default&TILEMATRIXSET=WGS84&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png'
+            ],
+            tileSize: 256,
+            attribution: '© Your WMTS WGS84 Server',
+            minzoom: 0,
+            maxzoom: 18,
+            // הגדרת scheme ל-TMS אם השרת שלך משתמש בזה
+            scheme: 'xyz' // או 'tms' בהתאם לשרת
+        }
+    },
+    layers: [
+        {
+            id: 'background',
+            type: 'background',
+            paint: {
+                'background-color': '#f0f0f0'
+            }
+        },
+        {
+            id: 'wmts-wgs84-layer',
+            type: 'raster',
+            source: 'wmts-wgs84-tiles',
+            paint: {
+                'raster-opacity': 1,
+                'raster-fade-duration': 300
+            }
+        }
+    ]
+};
+
+// סגנון WMTS Web Mercator הקיים (שמירה לתאימות לאחור)
 export const WMTS_STYLE = {
     version: 8,
-    name: 'WMTS Custom',
+    name: 'WMTS Web Mercator',
     glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
     sources: {
         'wmts-tiles': {
             type: 'raster',
             tiles: [
-                // כאן תכניס את הURL של שרת ה-WMTS שלך
                 'https://your-server.com/webmercator/{z}-{x}-{y}.png'
-                // לדוגמה: 'https://tiles.example.com/webmercator/{z}-{x}-{y}.png'
             ],
             tileSize: 256,
             attribution: '© Your WMTS Server',
@@ -151,15 +189,16 @@ export const WMTS_STYLE = {
     ]
 };
 
-// כעת כל הסגנונות יחד - הקיימים + WMTS
+// כל הסגנונות יחד - כולל WMTS WGS84
 export const MAP_STYLES = {
     osm: OSM_STYLE,
     satellite: SATELLITE_STYLE,
     terrain: TERRAIN_STYLE,
-    wmts: WMTS_STYLE  // הוספנו את ה-WMTS
+    wmts: WMTS_STYLE,
+    wmts_wgs84: WMTS_WGS84_STYLE  // הסגנון החדש
 };
 
-// מידע על הסגנונות - עכשיו כולל WMTS
+// מידע על הסגנונות - כולל WMTS WGS84
 export const STYLE_INFO = {
     osm: {
         key: 'osm',
@@ -181,15 +220,21 @@ export const STYLE_INFO = {
     },
     wmts: {
         key: 'wmts',
-        name: 'מפת WMTS',
-        description: 'מפת רקע מותאמת',
+        name: 'WMTS Mercator',
+        description: 'מפת WMTS Web Mercator',
         icon: '🗃️'
+    },
+    wmts_wgs84: {
+        key: 'wmts_wgs84',
+        name: 'WMTS WGS84',
+        description: 'מפת WMTS בקואורדינטות WGS84',
+        icon: '🌐'
     }
 };
 
 // פונקציות עזר - ללא שינוי
 export const getMapStyle = (styleKey) => {
-    return MAP_STYLES[styleKey] || MAP_STYLES.osm; // ברירת מחדל OSM
+    return MAP_STYLES[styleKey] || MAP_STYLES.osm;
 };
 
 export const getStyleInfo = (styleKey) => {
@@ -197,15 +242,15 @@ export const getStyleInfo = (styleKey) => {
 };
 
 export const getAvailableStyles = () => {
-    return Object.keys(MAP_STYLES); // יחזיר ['osm', 'satellite', 'terrain', 'wmts']
+    return Object.keys(MAP_STYLES);
 };
 
 export const isValidStyle = (styleKey) => {
     return styleKey in MAP_STYLES;
 };
 
-// פונקציה ליצירת סגנון WMTS מותאם עם URL שונה
-export const createWMTSStyle = (baseUrl, options = {}) => {
+// פונקציה פשוטה ליצירת סגנון עם URL קיים
+export const createSimpleWMTSStyle = (tileUrl, options = {}) => {
     const {
         attribution = '© Your WMTS Server',
         minzoom = 0,
@@ -213,21 +258,22 @@ export const createWMTSStyle = (baseUrl, options = {}) => {
         tileSize = 256,
         name = 'Custom WMTS',
         opacity = 1,
-        backgroundColor = '#f0f0f0'
+        backgroundColor = '#f0f0f0',
+        scheme = 'xyz' // או 'tms'
     } = options;
 
     return {
         version: 8,
         name,
-        glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
         sources: {
             'wmts-tiles': {
                 type: 'raster',
-                tiles: [`${baseUrl}/webmercator/{z}-{x}-{y}.png`],
+                tiles: [tileUrl], // פשוט ה-URL שעבד לך ב-Leaflet
                 tileSize,
                 attribution,
                 minzoom,
-                maxzoom
+                maxzoom,
+                scheme
             }
         },
         layers: [
@@ -251,22 +297,20 @@ export const createWMTSStyle = (baseUrl, options = {}) => {
     };
 };
 
-// פונקציה לעדכון URL של WMTS קיים
-export const updateWMTSUrl = (newUrl, options = {}) => {
+// פונקציה לעדכון URL פשוט
+export const updateWMTSUrl = (newTileUrl, options = {}) => {
     const updatedStyle = {
         ...WMTS_STYLE,
         sources: {
             ...WMTS_STYLE.sources,
             'wmts-tiles': {
                 ...WMTS_STYLE.sources['wmts-tiles'],
-                tiles: [newUrl],
+                tiles: [newTileUrl],
                 ...options
             }
         }
     };
 
-    // עדכון הסגנון במערך הראשי
     MAP_STYLES.wmts = updatedStyle;
-
     return updatedStyle;
 };
