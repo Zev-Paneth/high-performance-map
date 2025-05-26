@@ -81,18 +81,21 @@ const HighPerformanceMap = ({
     const [currentPosition, setCurrentPosition] = useState(initialCenter);
     const [currentZoom, setCurrentZoom] = useState(initialZoom);
 
-    // טיפול באירוע תزוזת המפה
+    // טיפול באירוע תזוזת המפה - מעודכן עם debounce
     const handleMapMove = useCallback(() => {
         if (!mapRef.current) return;
 
         const center = mapRef.current.getCenter();
         const zoom = mapRef.current.getZoom();
 
-        setCurrentPosition({
-            lng: center.lng,
-            lat: center.lat
+        // עדכון state עם requestAnimationFrame למניעת רנדור מיותר
+        requestAnimationFrame(() => {
+            setCurrentPosition({
+                lng: center.lng,
+                lat: center.lat
+            });
+            setCurrentZoom(zoom);
         });
-        setCurrentZoom(zoom);
 
         if (onMapMove) {
             onMapMove({
@@ -125,7 +128,7 @@ const HighPerformanceMap = ({
         }
     }, []);
 
-    // אתחול המפה - useEffect עם dependency array ריק
+    // אתחול המפה - מתוקן עם dependencies נכונות
     useEffect(() => {
         if (mapContainerRef.current && !mapRef.current) {
             try {
@@ -204,7 +207,7 @@ const HighPerformanceMap = ({
                 }
             }
         };
-    }, []); // dependency array ריק - רק פעם אחת
+    }, [initialCenter.lng, initialCenter.lat, initialZoom, handleMapMove, handleMapClick]); // תיקון dependencies
 
     return (
         <div

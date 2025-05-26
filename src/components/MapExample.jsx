@@ -205,7 +205,7 @@ const PublicMapExample = () => {
     // פונקציה לשינוי סגנון המפה
     const handleStyleChange = useCallback((styleKey) => {
         setMapStyle(styleKey);
-        console.log('סגנון מפה השתנה ל:', styleKey);
+        console.log('Map style changed to:', styleKey);
     }, []);
 
     // פונקציה לטעינת מיקום אחרון - משופרת

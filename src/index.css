@@ -22,13 +22,13 @@ a:hover {
   color: #535bf2;
 }
 
-/* תיקון לגובה מלא */
+/* תיקון לגובה מלא - מעודכן */
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden;
+  /* הוסר overflow: hidden כדי למנוע הסתרת תוכן */
 }
 
 /* הסרת flexbox שמפריע לתצוגת המפה */
@@ -42,6 +42,8 @@ body {
 #root {
   height: 100vh;
   width: 100vw;
+  /* overflow: hidden רק לרכיב הראשי */
+  overflow: hidden;
 }
 
 h1 {
