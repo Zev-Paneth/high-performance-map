@@ -7,44 +7,14 @@ import PointsLayer from '../layers/PointsLayer';
 import PolygonsLayer from '../layers/PolygonsLayer';
 import LinesLayer from '../layers/LinesLayer';
 
-// סגנון בסיסי למפה עם תמיכה בפונטים - עודכן
-const BASIC_STYLE = {
-    version: 8,
-    // הוספת פונטים - חשוב למניעת שגיאות
-    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-    sources: {
-        'osm-tiles': {
-            type: 'raster',
-            tiles: [
-                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '&copy; OpenStreetMap contributors'
-        }
-    },
-    layers: [
-        {
-            id: 'background',
-            type: 'background',
-            paint: {
-                'background-color': '#f0f0f0'
-            }
-        },
-        {
-            id: 'osm-tiles-layer',
-            type: 'raster',
-            source: 'osm-tiles',
-        }
-    ]
-};
+// ייבוא הסגנונות - כולל החדש
+import { OSM_STYLE } from '../styles/MapStyles';
 
 const HighPerformanceMap = ({
                                 // נתוני מיקום התחלתי
                                 initialCenter = { lng: 34.8516, lat: 31.0461 },
                                 initialZoom = 8,
-                                mapStyle = BASIC_STYLE,
+                                mapStyle = OSM_STYLE, // ברירת מחדל OSM (כמו קודם)
 
                                 // נתוני הישויות
                                 points = [],
@@ -80,15 +50,15 @@ const HighPerformanceMap = ({
     const [mapReady, setMapReady] = useState(false);
     const [currentPosition, setCurrentPosition] = useState(initialCenter);
     const [currentZoom, setCurrentZoom] = useState(initialZoom);
+    const [currentMapStyle, setCurrentMapStyle] = useState(mapStyle);
 
-    // טיפול באירוע תזוזת המפה - מעודכן עם debounce
+    // טיפול באירוע תזוזת המפה
     const handleMapMove = useCallback(() => {
         if (!mapRef.current) return;
 
         const center = mapRef.current.getCenter();
         const zoom = mapRef.current.getZoom();
 
-        // עדכון state עם requestAnimationFrame למניעת רנדור מיותר
         requestAnimationFrame(() => {
             setCurrentPosition({
                 lng: center.lng,
@@ -128,19 +98,15 @@ const HighPerformanceMap = ({
         }
     }, []);
 
-    // אתחול המפה - מתוקן עם dependencies נכונות
+    // אתחול המפה
     useEffect(() => {
         if (mapContainerRef.current && !mapRef.current) {
             try {
-                // וידוא שהסגנון כולל פונטים - חשוב!
-                const styleWithFonts = {
-                    ...mapStyle,
-                    glyphs: mapStyle.glyphs || "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf"
-                };
+                console.log('Initializing map with style:', mapStyle.name || 'Unknown style');
 
                 const map = new Map({
                     container: mapContainerRef.current,
-                    style: styleWithFonts, // שימוש בסגנון המעודכן
+                    style: mapStyle,
                     center: [initialCenter.lng, initialCenter.lat],
                     zoom: initialZoom,
                     attributionControl: false,
@@ -149,14 +115,14 @@ const HighPerformanceMap = ({
 
                 // שמירת אובייקט המפה ב-ref
                 mapRef.current = map;
+                setCurrentMapStyle(mapStyle);
 
                 // הוספת מאזינים לאירועים
                 map.on('load', () => {
-                    console.log('Map loaded successfully with fonts support');
+                    console.log('Map loaded successfully:', mapStyle.name || 'Unknown style');
                     setMapInstance(map);
                     setMapReady(true);
 
-                    // קריאה ל-onMapLoad רק פעם אחת כאן
                     if (onMapLoad) {
                         onMapLoad({
                             map,
@@ -181,6 +147,23 @@ const HighPerformanceMap = ({
                 // טיפול בשגיאות
                 map.on('error', (e) => {
                     console.error('Map error:', e);
+
+                    // אם השגיאה קשורה לפונטים ואנחנו ב-WMTS - נתעלם
+                    if (e.error && e.error.message &&
+                        mapStyle.name && mapStyle.name.includes('WMTS') &&
+                        (e.error.message.includes('glyphs') ||
+                            e.error.message.includes('font') ||
+                            e.error.message.includes('pbf'))) {
+                        console.warn('Font-related error ignored for WMTS:', e.error.message);
+                        return;
+                    }
+                });
+
+                // מאזין לטעינת אריחים
+                map.on('sourcedata', (e) => {
+                    if (e.isSourceLoaded) {
+                        console.log('Tiles loaded for source:', e.sourceId);
+                    }
                 });
 
             } catch (error) {
@@ -188,17 +171,14 @@ const HighPerformanceMap = ({
             }
         }
 
-        // ניקוי בעת סיום - קריטי למניעת דליפות זיכרון
+        // ניקוי בעת סיום
         return () => {
             if (mapRef.current) {
                 try {
                     if (mapRef.current.loaded()) {
-                        // הסרת מאזינים
                         mapRef.current.off('move', handleMapMove);
                         mapRef.current.off('click', handleMapClick);
                     }
-
-                    // הסרת המפה
                     mapRef.current.remove();
                 } catch (error) {
                     console.error('Error cleaning up map:', error);
@@ -207,7 +187,38 @@ const HighPerformanceMap = ({
                 }
             }
         };
-    }, [initialCenter.lng, initialCenter.lat, initialZoom, handleMapMove, handleMapClick]); // תיקון dependencies
+    }, [initialCenter.lng, initialCenter.lat, initialZoom, handleMapMove, handleMapClick, mapStyle]);
+
+    // עדכון סגנון המפה כאשר הוא משתנה
+    useEffect(() => {
+        if (mapRef.current && mapRef.current.loaded() && mapStyle !== currentMapStyle) {
+            try {
+                console.log('Updating map style to:', mapStyle.name || 'Unknown style');
+                mapRef.current.setStyle(mapStyle);
+                setCurrentMapStyle(mapStyle);
+
+                // לאחר שינוי סגנון, המפה תטען מחדש
+                mapRef.current.once('styledata', () => {
+                    console.log('Style updated successfully');
+                    // השכבות יתעדכנו אוטומטית ע"י useEffect של השכבות
+                });
+            } catch (error) {
+                console.error('Error updating map style:', error);
+            }
+        }
+    }, [mapStyle, currentMapStyle]);
+
+    // פונקציה לזיהוי סוג הסגנון הנוכחי
+    const getStyleType = () => {
+        if (!mapStyle || !mapStyle.name) return 'Unknown';
+
+        const name = mapStyle.name.toLowerCase();
+        if (name.includes('wmts')) return 'WMTS';
+        if (name.includes('satellite')) return 'Satellite';
+        if (name.includes('terrain')) return 'Terrain';
+        if (name.includes('openstreetmap') || name.includes('osm')) return 'OSM';
+        return 'Custom';
+    };
 
     return (
         <div
@@ -227,12 +238,12 @@ const HighPerformanceMap = ({
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    backgroundColor: '#ff0000', // צבע אדום זמני לבדיקה
-                    minHeight: '500px' // גובה מינימום
+                    backgroundColor: '#f0f0f0',
+                    minHeight: '500px'
                 }}
             />
 
-            {/* שכבות המפה - נרנדרו רק כאשר המפה מוכנה */}
+            {/* שכבות המפה */}
             {mapReady && mapInstance && (
                 <>
                     {/* שכבת נקודות */}
@@ -279,22 +290,24 @@ const HighPerformanceMap = ({
                 </>
             )}
 
-            {/* תצוגת מידע ומצב טעינה */}
+            {/* תצוגת מידע */}
             <div
                 style={{
                     position: 'absolute',
                     bottom: '10px',
                     left: '10px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                    padding: '5px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    padding: '8px 12px',
                     borderRadius: '4px',
                     fontSize: '12px',
-                    zIndex: 10
+                    zIndex: 10,
+                    fontFamily: 'monospace',
+                    border: '1px solid #ccc'
                 }}
             >
-                <span>
-                    coordinates: {currentPosition.lat.toFixed(4)}, {currentPosition.lng.toFixed(4)} | zoom: {currentZoom.toFixed(2)}
-                </span>
+                <div>📍 {currentPosition.lat.toFixed(4)}, {currentPosition.lng.toFixed(4)}</div>
+                <div>🔍 Zoom: {currentZoom.toFixed(2)}</div>
+                <div>🗺️ {getStyleType()}</div>
             </div>
         </div>
     );

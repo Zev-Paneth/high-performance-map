@@ -3,9 +3,8 @@ import HighPerformanceMap from './Map/core/HighPerformanceMap.jsx';
 import StyleSelector from './Map/StyleSelector.jsx';
 import { getMapStyle } from './Map/styles';
 
-// ייבוא ה-hooks החדשים
+// ייבוא ה-hooks
 import { useMapInteractions, useSavedLocations } from './Map/hooks/useMapInteractions.js';
-import { flyToFeature } from './Map/utils/geometryUtils.js'
 
 const PublicMapExample = () => {
     // מצבים
@@ -14,7 +13,7 @@ const PublicMapExample = () => {
     const [lines, setLines] = useState([]);
     const [selectedFeature, setSelectedFeature] = useState(null);
     const [mapInstance, setMapInstance] = useState(null);
-    const [mapStyle, setMapStyle] = useState('osm');
+    const [mapStyle, setMapStyle] = useState('osm'); // ברירת מחדל OSM
     const [showLayers, setShowLayers] = useState({
         points: true,
         polygons: true,
@@ -46,7 +45,7 @@ const PublicMapExample = () => {
         deleteSavedLocation
     } = useSavedLocations(mapInstance);
 
-    // נתוני דוגמה - ערים בישראל (לא משתנה)
+    // נתוני דוגמה - ערים בישראל
     const israelCities = [
         {
             coordinates: [34.7818, 32.0853],
@@ -164,19 +163,20 @@ const PublicMapExample = () => {
 
     // מאזין לטעינת המפה
     const handleMapLoad = useCallback((mapData) => {
-        console.log('המפה נטענה בהצלחה!');
+        console.log('מפה נטענה בהצלחה!', 'סגנון:', mapStyle);
         setMapInstance(mapData);
-    }, []);
+    }, [mapStyle]);
 
-    // מאזין לתזוזת המפה - עדכון לשמור גם מיקום אוטומטי
+    // מאזין לתזוזת המפה
     const handleMapMove = useCallback((moveData) => {
         // שמירה אוטומטית של המיקום האחרון
         localStorage.setItem('lastMapPosition', JSON.stringify({
             center: moveData.center,
             zoom: moveData.zoom,
+            style: mapStyle, // שמירת הסגנון גם
             timestamp: Date.now()
         }));
-    }, []);
+    }, [mapStyle]);
 
     // מאזין ללחיצה על המפה
     const handleMapClick = useCallback((clickData) => {
@@ -184,7 +184,7 @@ const PublicMapExample = () => {
         setSelectedFeature(null);
     }, []);
 
-    // פונקציות התאמה לנתונים (לא משתנות)
+    // פונקציות התאמה לנתונים
     const getPointProps = useCallback((point) => ({
         color: point.properties?.color || '#ff0000',
         radius: point.properties?.radius || 6,
@@ -202,24 +202,41 @@ const PublicMapExample = () => {
         lineWidth: line.properties?.lineWidth || 3,
     }), []);
 
-    // פונקציה לשינוי סגנון המפה
-    const handleStyleChange = useCallback((styleKey) => {
-        setMapStyle(styleKey);
-        console.log('Map style changed to:', styleKey);
-    }, []);
-
-    // פונקציה לטעינת מיקום אחרון - משופרת
+    // פונקציה לטעינת מיקום אחרון
     const loadLastPosition = useCallback(() => {
         const saved = localStorage.getItem('lastMapPosition');
         if (saved && mapInstance) {
             try {
                 const position = JSON.parse(saved);
                 mapInstance.flyTo(position.center, position.zoom, { duration: 1000 });
+
+                // אם נשמר גם סגנון - נעדכן אותו
+                if (position.style && position.style !== mapStyle) {
+                    setMapStyle(position.style);
+                }
             } catch (error) {
                 console.error('Error loading last position:', error);
             }
         }
-    }, [mapInstance]);
+    }, [mapInstance, mapStyle]);
+
+    // טיפול בשינוי סגנון
+    const handleStyleChange = useCallback((newStyle) => {
+        console.log('משנה סגנון ל:', newStyle);
+        setMapStyle(newStyle);
+
+        // שמירת הסגנון החדש ב-localStorage
+        const saved = localStorage.getItem('lastMapPosition');
+        if (saved) {
+            try {
+                const position = JSON.parse(saved);
+                position.style = newStyle;
+                localStorage.setItem('lastMapPosition', JSON.stringify(position));
+            } catch (error) {
+                console.error('Error saving style:', error);
+            }
+        }
+    }, []);
 
     return (
         <div style={{ height: '100%', width: '100%'}}>
@@ -237,27 +254,53 @@ const PublicMapExample = () => {
                 maxHeight: '80vh',
                 overflowY: 'auto'
             }}>
-                <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>בקרת מפה</h3>
+                <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>🗺️ בקרת מפה</h3>
 
-                {/* בוחר סגנון מפה */}
+                {/* בוחר סגנונות - כעת עם כל האפשרויות */}
                 <StyleSelector
                     currentStyle={mapStyle}
                     onStyleChange={handleStyleChange}
-                    layout="buttons"
+                    layout="buttons" // או "dropdown"
                     showIcons={true}
                     showDescriptions={false}
+                    compact={false}
+                    columns={2}
                 />
+
+                {/* הוראות עבור WMTS */}
+                {mapStyle === 'wmts' && (
+                    <div style={{
+                        marginBottom: '15px',
+                        padding: '10px',
+                        backgroundColor: '#fff3cd',
+                        borderRadius: '6px',
+                        border: '1px solid #ffeaa7',
+                        fontSize: '12px'
+                    }}>
+                        <strong>🔧 הגדרת WMTS:</strong>
+                        <div style={{ marginTop: '5px', color: '#856404' }}>
+                            עדכן את ה-URL ב-MapStyles.js:<br/>
+                            <code style={{ fontSize: '10px' }}>
+                                'https://your-server.com/webmercator/{'{z}'}-{'{x}'}-{'{y}'}.png'
+                            </code>
+                        </div>
+                    </div>
+                )}
 
                 {/* בקרת שכבות */}
                 <div style={{ marginBottom: '15px' }}>
-                    <strong>שכבות:</strong>
+                    <strong>שכבות נתונים:</strong>
                     <div style={{ marginTop: '8px' }}>
                         {Object.entries(showLayers).map(([layer, visible]) => (
                             <label key={layer} style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 marginBottom: '8px',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                padding: '8px',
+                                backgroundColor: visible ? '#f0f8ff' : '#f8f9fa',
+                                borderRadius: '4px',
+                                border: `1px solid ${visible ? '#b3d9ff' : '#dee2e6'}`
                             }}>
                                 <input
                                     type="checkbox"
@@ -271,7 +314,7 @@ const PublicMapExample = () => {
                                         transform: 'scale(1.2)'
                                     }}
                                 />
-                                <span style={{ fontSize: '14px' }}>
+                                <span style={{ fontSize: '14px', fontWeight: visible ? '500' : 'normal' }}>
                                     {layer === 'points' ? '🏙️ ערים' :
                                         layer === 'polygons' ? '🗺️ אזורים' : '🛣️ דרכים'}
                                 </span>
@@ -282,21 +325,31 @@ const PublicMapExample = () => {
 
                 {/* סטטיסטיקות */}
                 <div style={{ marginBottom: '15px' }}>
-                    <strong>סטטיסטיקות:</strong>
+                    <strong>סטטיסטיקות נתונים:</strong>
                     <div style={{
                         fontSize: '14px',
                         marginTop: '8px',
                         backgroundColor: '#f8f9fa',
-                        padding: '8px',
-                        borderRadius: '4px'
+                        padding: '12px',
+                        borderRadius: '6px',
+                        border: '1px solid #dee2e6'
                     }}>
-                        <div>📍 ערים: {points.length}</div>
-                        <div>🗺️ אזורים: {polygons.length}</div>
-                        <div>🛣️ דרכים: {lines.length}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span>📍 ערים:</span>
+                            <span style={{ fontWeight: 'bold' }}>{points.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span>🗺️ אזורים:</span>
+                            <span style={{ fontWeight: 'bold' }}>{polygons.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>🛣️ דרכים:</span>
+                            <span style={{ fontWeight: 'bold' }}>{lines.length}</span>
+                        </div>
                     </div>
                 </div>
 
-                {/* מידע על פיצ'ר נבחר - עם כפתור flyTo משופר */}
+                {/* מידע על פיצ'ר נבחר */}
                 {selectedFeature && (
                     <div style={{
                         backgroundColor: '#e8f4fd',
@@ -306,18 +359,25 @@ const PublicMapExample = () => {
                         border: '1px solid #b3d9ff'
                     }}>
                         <strong style={{ color: '#0066cc' }}>✨ נבחר:</strong>
-                        <div style={{ marginTop: '5px' }}>
-                            <div><strong>סוג:</strong> {selectedFeature.type}</div>
-                            <div><strong>שם:</strong> {selectedFeature.data.properties?.name}</div>
+                        <div style={{ marginTop: '8px' }}>
+                            <div style={{ marginBottom: '4px' }}>
+                                <strong>סוג:</strong> {selectedFeature.type}
+                            </div>
+                            <div style={{ marginBottom: '4px' }}>
+                                <strong>שם:</strong> {selectedFeature.data.properties?.name}
+                            </div>
                             {selectedFeature.data.properties?.population && (
-                                <div><strong>אוכלוסיה:</strong> {selectedFeature.data.properties.population.toLocaleString()}</div>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>אוכלוסיה:</strong> {selectedFeature.data.properties.population.toLocaleString()}
+                                </div>
                             )}
                             {selectedFeature.data.properties?.type && (
-                                <div><strong>קטגוריה:</strong> {selectedFeature.data.properties.type}</div>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <strong>קטגוריה:</strong> {selectedFeature.data.properties.type}
+                                </div>
                             )}
                         </div>
 
-                        {/* כפתור flyTo משופר */}
                         <button
                             onClick={() => {
                                 flyToSelectedFeature(selectedFeature.data, {
@@ -326,14 +386,15 @@ const PublicMapExample = () => {
                                 });
                             }}
                             style={{
-                                marginTop: '8px',
-                                padding: '6px 12px',
+                                width: '100%',
+                                padding: '8px 12px',
                                 backgroundColor: '#0066cc',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '4px',
                                 cursor: 'pointer',
-                                fontSize: '12px'
+                                fontSize: '13px',
+                                fontWeight: '500'
                             }}
                         >
                             🎯 מרכז במפה
@@ -341,16 +402,16 @@ const PublicMapExample = () => {
                     </div>
                 )}
 
-                {/* כפתורי פעולה - מעודכנים */}
+                {/* כפתורי ניווט */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
                         onClick={() => {
                             if (mapInstance) {
-                                mapInstance.flyTo({ lng: 34.8516, lat: 31.0461 }, 8);
+                                mapInstance.flyTo({ lng: 34.8516, lat: 31.0461 }, 8, { duration: 1500 });
                             }
                         }}
                         style={{
-                            padding: '10px 15px',
+                            padding: '12px 15px',
                             backgroundColor: '#007cba',
                             color: 'white',
                             border: 'none',
@@ -366,7 +427,7 @@ const PublicMapExample = () => {
                     <button
                         onClick={loadLastPosition}
                         style={{
-                            padding: '10px 15px',
+                            padding: '12px 15px',
                             backgroundColor: '#28a745',
                             color: 'white',
                             border: 'none',
@@ -376,10 +437,9 @@ const PublicMapExample = () => {
                             fontWeight: '500'
                         }}
                     >
-                        📍 מיקום אחרון
+                        📍 מיקום וסגנון אחרון
                     </button>
 
-                    {/* כפתור שמירת מיקום חדש */}
                     <button
                         onClick={() => {
                             const name = `מיקום_${new Date().toLocaleTimeString('he-IL')}`;
@@ -388,7 +448,7 @@ const PublicMapExample = () => {
                             }
                         }}
                         style={{
-                            padding: '10px 15px',
+                            padding: '12px 15px',
                             backgroundColor: '#ffc107',
                             color: 'black',
                             border: 'none',
@@ -398,7 +458,7 @@ const PublicMapExample = () => {
                             fontWeight: '500'
                         }}
                     >
-                        💾 שמור מיקום נוכחי
+                        💾 שמור מיקום
                     </button>
                 </div>
 
@@ -411,29 +471,51 @@ const PublicMapExample = () => {
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                padding: '4px 8px',
+                                padding: '6px 8px',
                                 backgroundColor: '#f8f9fa',
                                 marginBottom: '4px',
                                 borderRadius: '4px',
-                                fontSize: '12px'
+                                fontSize: '12px',
+                                border: '1px solid #dee2e6'
                             }}>
-                                <span style={{ cursor: 'pointer' }} onClick={() => loadSavedLocation(name)}>
+                                <span
+                                    style={{ cursor: 'pointer', flex: 1 }}
+                                    onClick={() => loadSavedLocation(name)}
+                                    title="לחץ לניווט למיקום"
+                                >
                                     📍 {name}
                                 </span>
                                 <button
-                                    onClick={() => deleteSavedLocation(name)}
+                                    onClick={() => {
+                                        if (confirm(`למחוק את המיקום "${name}"?`)) {
+                                            deleteSavedLocation(name);
+                                        }
+                                    }}
                                     style={{
                                         background: 'none',
                                         border: 'none',
                                         color: '#dc3545',
                                         cursor: 'pointer',
-                                        fontSize: '12px'
+                                        fontSize: '12px',
+                                        padding: '2px 6px'
                                     }}
+                                    title="מחק מיקום"
                                 >
-                                    ❌
+                                    🗑️
                                 </button>
                             </div>
                         ))}
+                        {Object.keys(getSavedLocations()).length === 0 && (
+                            <div style={{
+                                textAlign: 'center',
+                                color: '#666',
+                                fontSize: '12px',
+                                fontStyle: 'italic',
+                                padding: '8px'
+                            }}>
+                                אין מיקומים שמורים
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -443,14 +525,14 @@ const PublicMapExample = () => {
                 // הגדרות בסיסיות
                 initialCenter={{ lng: 34.8516, lat: 31.0461 }}
                 initialZoom={8}
-                mapStyle={getMapStyle(mapStyle)}
+                mapStyle={getMapStyle(mapStyle)} // שימוש בסגנון הנבחר
 
                 // נתונים - מותנים בהגדרות התצוגה
                 points={showLayers.points ? points : []}
                 polygons={showLayers.polygons ? polygons : []}
                 lines={showLayers.lines ? lines : []}
 
-                // מאזיני אירועים - כעת משתמשים ב-hooks
+                // מאזיני אירועים
                 onMapLoad={handleMapLoad}
                 onMapMove={handleMapMove}
                 onMapClick={handleMapClick}
@@ -482,10 +564,16 @@ const PublicMapExample = () => {
                     borderRadius: '8px',
                     textAlign: 'center',
                     zIndex: 1000,
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                    border: '1px solid #dee2e6'
                 }}>
-                    <div style={{ fontSize: '18px', marginBottom: '10px' }}>⏳ טוען נתוני מפה...</div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>מכין ערים ואזורים בישראל</div>
+                    <div style={{ fontSize: '24px', marginBottom: '10px' }}>🗺️</div>
+                    <div style={{ fontSize: '18px', marginBottom: '8px', fontWeight: '500' }}>
+                        מטעין מפה...
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#666' }}>
+                        מכין נתוני ערים ואזורים בישראל
+                    </div>
                 </div>
             )}
         </div>

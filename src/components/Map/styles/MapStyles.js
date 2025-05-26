@@ -1,4 +1,8 @@
-export const OPENSTREETMAP_STYLE = {
+// src/components/Map/styles/MapStyles.js
+// עדכון להוספת WMTS לרקעים הקיימים
+
+// סגנון OSM הקיים
+export const OSM_STYLE = {
     version: 8,
     name: 'OpenStreetMap',
     glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
@@ -11,7 +15,8 @@ export const OPENSTREETMAP_STYLE = {
                 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
             ],
             tileSize: 256,
-            attribution: '© OpenStreetMap contributors'
+            attribution: '© OpenStreetMap contributors',
+            maxzoom: 19
         }
     },
     layers: [
@@ -23,7 +28,7 @@ export const OPENSTREETMAP_STYLE = {
             }
         },
         {
-            id: 'osm-tiles-layer',
+            id: 'osm-layer',
             type: 'raster',
             source: 'osm-tiles',
             paint: {
@@ -33,43 +38,7 @@ export const OPENSTREETMAP_STYLE = {
     ]
 };
 
-export const TOPOGRAPHIC_STYLE = {
-    version: 8,
-    name: 'Topographic',
-    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-    sources: {
-        'topo-tiles': {
-            type: 'raster',
-            tiles: [
-                'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
-                'https://b.tile.opentopomap.org/{z}/{x}/{y}.png',
-                'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors, © OpenTopoMap',
-            maxzoom: 17
-        }
-    },
-    layers: [
-        {
-            id: 'background',
-            type: 'background',
-            paint: {
-                'background-color': '#f4f1de'
-            }
-        },
-        {
-            id: 'topo-layer',
-            type: 'raster',
-            source: 'topo-tiles',
-            paint: {
-                'raster-opacity': 1,
-                'raster-fade-duration': 300
-            }
-        }
-    ]
-};
-
+// סגנון Satellite הקיים
 export const SATELLITE_STYLE = {
     version: 8,
     name: 'Satellite',
@@ -78,10 +47,13 @@ export const SATELLITE_STYLE = {
         'satellite-tiles': {
             type: 'raster',
             tiles: [
-                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                'https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                'https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
             ],
             tileSize: 256,
-            attribution: '© Esri, Maxar, Earthstar Geographics'
+            attribution: '© Google',
+            maxzoom: 20
         }
     },
     layers: [
@@ -89,17 +61,21 @@ export const SATELLITE_STYLE = {
             id: 'background',
             type: 'background',
             paint: {
-                'background-color': '#000000'
+                'background-color': '#000'
             }
         },
         {
             id: 'satellite-layer',
             type: 'raster',
-            source: 'satellite-tiles'
+            source: 'satellite-tiles',
+            paint: {
+                'raster-opacity': 1
+            }
         }
     ]
 };
 
+// סגנון Terrain הקיים
 export const TERRAIN_STYLE = {
     version: 8,
     name: 'Terrain',
@@ -108,10 +84,13 @@ export const TERRAIN_STYLE = {
         'terrain-tiles': {
             type: 'raster',
             tiles: [
-                'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png'
+                'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
+                'https://mt2.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
+                'https://mt3.google.com/vt/lyrs=p&x={x}&y={y}&z={z}'
             ],
             tileSize: 256,
-            attribution: '© Stamen Design, © OpenStreetMap contributors'
+            attribution: '© Google',
+            maxzoom: 20
         }
     },
     layers: [
@@ -119,31 +98,37 @@ export const TERRAIN_STYLE = {
             id: 'background',
             type: 'background',
             paint: {
-                'background-color': '#e8dcc0'
+                'background-color': '#e8e8e8'
             }
         },
         {
             id: 'terrain-layer',
             type: 'raster',
-            source: 'terrain-tiles'
+            source: 'terrain-tiles',
+            paint: {
+                'raster-opacity': 1
+            }
         }
     ]
 };
 
-export const DARK_STYLE = {
+// הוספת סגנון WMTS החדש
+export const WMTS_STYLE = {
     version: 8,
-    name: 'Dark',
+    name: 'WMTS Custom',
     glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
     sources: {
-        'dark-tiles': {
+        'wmts-tiles': {
             type: 'raster',
             tiles: [
-                'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                // כאן תכניס את הURL של שרת ה-WMTS שלך
+                'https://your-server.com/webmercator/{z}-{x}-{y}.png'
+                // לדוגמה: 'https://tiles.example.com/webmercator/{z}-{x}-{y}.png'
             ],
             tileSize: 256,
-            attribution: '© CartoDB, © OpenStreetMap contributors'
+            attribution: '© Your WMTS Server',
+            minzoom: 0,
+            maxzoom: 18
         }
     },
     layers: [
@@ -151,70 +136,36 @@ export const DARK_STYLE = {
             id: 'background',
             type: 'background',
             paint: {
-                'background-color': '#2c2c2c'
+                'background-color': '#f0f0f0'
             }
         },
         {
-            id: 'dark-layer',
+            id: 'wmts-layer',
             type: 'raster',
-            source: 'dark-tiles'
-        }
-    ]
-};
-
-export const LIGHT_STYLE = {
-    version: 8,
-    name: 'Light',
-    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-    sources: {
-        'light-tiles': {
-            type: 'raster',
-            tiles: [
-                'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '© CartoDB, © OpenStreetMap contributors'
-        }
-    },
-    layers: [
-        {
-            id: 'background',
-            type: 'background',
+            source: 'wmts-tiles',
             paint: {
-                'background-color': '#ffffff'
+                'raster-opacity': 1,
+                'raster-fade-duration': 300
             }
-        },
-        {
-            id: 'light-layer',
-            type: 'raster',
-            source: 'light-tiles'
         }
     ]
 };
 
+// כעת כל הסגנונות יחד - הקיימים + WMTS
 export const MAP_STYLES = {
-    osm: OPENSTREETMAP_STYLE,
-    topo: TOPOGRAPHIC_STYLE,
+    osm: OSM_STYLE,
     satellite: SATELLITE_STYLE,
     terrain: TERRAIN_STYLE,
-    dark: DARK_STYLE,
-    light: LIGHT_STYLE
+    wmts: WMTS_STYLE  // הוספנו את ה-WMTS
 };
 
+// מידע על הסגנונות - עכשיו כולל WMTS
 export const STYLE_INFO = {
     osm: {
         key: 'osm',
-        name: 'רחובות',
-        description: 'מפת רחובות בסיסית',
+        name: 'OpenStreetMap',
+        description: 'מפת כבישים ויישובים',
         icon: '🗺️'
-    },
-    topo: {
-        key: 'topo',
-        name: 'טופוגרפית',
-        description: 'מפה טופוגרפית עם גבהים',
-        icon: '🏔️'
     },
     satellite: {
         key: 'satellite',
@@ -224,26 +175,21 @@ export const STYLE_INFO = {
     },
     terrain: {
         key: 'terrain',
-        name: 'שטח',
-        description: 'מפת שטח וטבע',
-        icon: '🌄'
+        name: 'טופוגרפיה',
+        description: 'מפת הרים ועמקים',
+        icon: '⛰️'
     },
-    dark: {
-        key: 'dark',
-        name: 'כהה',
-        description: 'מפה כהה לעיניים',
-        icon: '🌙'
-    },
-    light: {
-        key: 'light',
-        name: 'בהיר',
-        description: 'מפה בהירה ונקייה',
-        icon: '☀️'
+    wmts: {
+        key: 'wmts',
+        name: 'מפת WMTS',
+        description: 'מפת רקע מותאמת',
+        icon: '🗃️'
     }
 };
 
+// פונקציות עזר - ללא שינוי
 export const getMapStyle = (styleKey) => {
-    return MAP_STYLES[styleKey] || MAP_STYLES.osm;
+    return MAP_STYLES[styleKey] || MAP_STYLES.osm; // ברירת מחדל OSM
 };
 
 export const getStyleInfo = (styleKey) => {
@@ -251,24 +197,76 @@ export const getStyleInfo = (styleKey) => {
 };
 
 export const getAvailableStyles = () => {
-    return Object.keys(MAP_STYLES);
+    return Object.keys(MAP_STYLES); // יחזיר ['osm', 'satellite', 'terrain', 'wmts']
 };
 
 export const isValidStyle = (styleKey) => {
     return styleKey in MAP_STYLES;
 };
 
-export const createCustomStyle = (baseStyle, customizations = {}) => {
+// פונקציה ליצירת סגנון WMTS מותאם עם URL שונה
+export const createWMTSStyle = (baseUrl, options = {}) => {
+    const {
+        attribution = '© Your WMTS Server',
+        minzoom = 0,
+        maxzoom = 18,
+        tileSize = 256,
+        name = 'Custom WMTS',
+        opacity = 1,
+        backgroundColor = '#f0f0f0'
+    } = options;
+
     return {
-        ...baseStyle,
-        ...customizations,
-        layers: [
-            ...baseStyle.layers,
-            ...(customizations.layers || [])
-        ],
+        version: 8,
+        name,
+        glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
         sources: {
-            ...baseStyle.sources,
-            ...(customizations.sources || {})
+            'wmts-tiles': {
+                type: 'raster',
+                tiles: [`${baseUrl}/webmercator/{z}-{x}-{y}.png`],
+                tileSize,
+                attribution,
+                minzoom,
+                maxzoom
+            }
+        },
+        layers: [
+            {
+                id: 'background',
+                type: 'background',
+                paint: {
+                    'background-color': backgroundColor
+                }
+            },
+            {
+                id: 'wmts-layer',
+                type: 'raster',
+                source: 'wmts-tiles',
+                paint: {
+                    'raster-opacity': opacity,
+                    'raster-fade-duration': 300
+                }
+            }
+        ]
+    };
+};
+
+// פונקציה לעדכון URL של WMTS קיים
+export const updateWMTSUrl = (newUrl, options = {}) => {
+    const updatedStyle = {
+        ...WMTS_STYLE,
+        sources: {
+            ...WMTS_STYLE.sources,
+            'wmts-tiles': {
+                ...WMTS_STYLE.sources['wmts-tiles'],
+                tiles: [newUrl],
+                ...options
+            }
         }
     };
+
+    // עדכון הסגנון במערך הראשי
+    MAP_STYLES.wmts = updatedStyle;
+
+    return updatedStyle;
 };
