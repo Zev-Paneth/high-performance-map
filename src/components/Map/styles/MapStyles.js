@@ -120,10 +120,7 @@ export const WMTS_WGS84_STYLE = {
     sources: {
         'wmts-wgs84-tiles': {
             type: 'raster',
-            tiles: [
-                // URL לדוגמה - החלף ל-URL האמיתי שלך
-                'https://your-wmts-server.com/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=your_layer&STYLE=default&TILEMATRIXSET=WGS84&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png'
-            ],
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
             tileSize: 256,
             attribution: '© Your WMTS WGS84 Server',
             minzoom: 0,
