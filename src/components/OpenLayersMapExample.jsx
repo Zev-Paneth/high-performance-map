@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import OpenLayersMap from './Map/core/OpenLayersMap.jsx';
 import StyleSelector from './Map/StyleSelector.jsx';
-import MapColoniesDebugPanel from './Map/debug/MapColoniesDebugPanel.js'; // הוספה
+import MapColoniesDebugPanel from './Map/debug/MapColoniesDebugPanel.jsx'; // הוספה
 import { getMapStyle } from './Map/styles';
 
 // ייבוא ה-hooks החדשים

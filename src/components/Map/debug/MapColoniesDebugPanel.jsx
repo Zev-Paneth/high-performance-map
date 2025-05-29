@@ -7,7 +7,7 @@ import {
     testMapColoniesConnection,
     MAP_COLONIES_CONFIG
 } from '../../../services/mapColonies/config.js';
-import { runFullDiagnostics, testSpecificLayer } from '../../../utils/testMapColoniesConnection.js';
+import { runFullDiagnostics, testSpecificLayer } from '../utils/testMapColoniesConnection.js';
 
 const MapColoniesDebugPanel = ({
                                    isVisible = false,

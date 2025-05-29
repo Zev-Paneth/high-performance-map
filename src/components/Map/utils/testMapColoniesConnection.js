@@ -6,7 +6,7 @@ import {
     validateWGS84Config,
     testMapColoniesConnection,
     printSetupInstructions
-} from '../services/mapColonies/config.js';
+} from '../../../services/mapColonies/config.js';
 
 /**
  * בדיקה מקיפה של הגדרות MapColonies
@@ -111,7 +111,7 @@ export const testSpecificLayer = async (productType, productId) => {
 
     try {
         // ניבא את השירות
-        const { mapColoniesWGS84Service } = await import('../services/mapColonies/mapColoniesWGS84Service.js');
+        const { mapColoniesWGS84Service } = await import('../../../services/mapColonies/mapColoniesWGS84Service.js');
 
         const layerData = await mapColoniesWGS84Service.queryLayer(productType, productId);
 
