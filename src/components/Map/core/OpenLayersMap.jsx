@@ -3,7 +3,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Map, View } from 'ol';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
 import { OSM, WMTS, Vector as VectorSource } from 'ol/source';
-import { fromLonLat, transformExtent } from 'ol/proj';
+import { fromLonLat, toLonLat } from 'ol/proj';
 import { Feature } from 'ol';
 import { Point, LineString, Polygon } from 'ol/geom';
 import { Style, Fill, Stroke, Circle as CircleStyle } from 'ol/style';
@@ -319,7 +319,7 @@ const OpenLayersMap = ({
             const zoom = view.getZoom();
 
             // המרה חזרה ל-WGS84
-            const [lng, lat] = ol.proj.toLonLat(center);
+            const [lng, lat] = toLonLat(center);
 
             setCurrentPosition({ lng, lat });
             setCurrentZoom(zoom);
@@ -334,7 +334,7 @@ const OpenLayersMap = ({
         });
 
         map.on('singleclick', (event) => {
-            const [lng, lat] = ol.proj.toLonLat(event.coordinate);
+            const [lng, lat] = toLonLat(event.coordinate);
 
             // בדיקה אם נלחץ על feature
             const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => feature);
@@ -376,7 +376,7 @@ const OpenLayersMap = ({
                 },
                 getZoom: () => map.getView().getZoom(),
                 getCenter: () => {
-                    const [lng, lat] = ol.proj.toLonLat(map.getView().getCenter());
+                    const [lng, lat] = toLonLat(map.getView().getCenter());
                     return { lng, lat };
                 },
                 getBounds: () => map.getView().calculateExtent()
