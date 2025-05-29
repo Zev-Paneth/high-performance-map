@@ -1,12 +1,15 @@
-// src/components/OpenLayersMapExample.jsx
 import React, { useState, useCallback, useEffect } from 'react';
 import OpenLayersMap from './Map/core/OpenLayersMap.jsx';
 import StyleSelector from './Map/StyleSelector.jsx';
+import MapColoniesDebugPanel from './Map/debug/MapColoniesDebugPanel.js'; // הוספה
 import { getMapStyle } from './Map/styles';
 
 // ייבוא ה-hooks החדשים
 import { useMapInteractions, useSavedLocations } from './Map/hooks/useMapInteractions.js';
 import { useMapColoniesWGS84Background } from './Map/hooks/useMapColoniesWGS84.js';
+
+// הוספת testMapColoniesConnection
+import { testMapColoniesConnection } from '../services/mapColonies/config.js';
 
 const OpenLayersMapExample = () => {
     // מצבים
@@ -22,6 +25,7 @@ const OpenLayersMapExample = () => {
         polygons: true,
         lines: true
     });
+    const [showDebugPanel, setShowDebugPanel] = useState(false);
 
     // Hook עבור MapColonies WGS84
     const {
@@ -322,6 +326,8 @@ const OpenLayersMapExample = () => {
                     {useMapColonies && (
                         <div style={{ marginTop: '10px', fontSize: '12px', color: '#2e7d32' }}>
                             ✅ מצב WGS84 פעיל - שכבות ממערכת MapColonies
+                            <br />
+                            📐 הקרנה: EPSG:4326 → Web Mercator
                         </div>
                     )}
                 </div>
@@ -344,6 +350,9 @@ const OpenLayersMapExample = () => {
                                 <div style={{ marginBottom: '8px', fontSize: '16px' }}>🔄</div>
                                 <div style={{ fontSize: '14px', fontWeight: '500' }}>
                                     טוען שכבות MapColonies WGS84...
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                    מתחבר לשירותי המפות
                                 </div>
                             </div>
                         )}
@@ -380,6 +389,25 @@ const OpenLayersMapExample = () => {
                             </div>
                         )}
 
+                        {!mapColoniesLoading && !mapColoniesError && mapColoniesLayers.length === 0 && (
+                            <div style={{
+                                padding: '15px',
+                                textAlign: 'center',
+                                backgroundColor: '#fff3cd',
+                                borderRadius: '6px',
+                                border: '1px solid #ffeaa7',
+                                color: '#856404'
+                            }}>
+                                <div style={{ marginBottom: '8px', fontSize: '16px' }}>📋</div>
+                                <div style={{ fontSize: '14px', fontWeight: '500' }}>
+                                    אין שכבות MapColonies זמינות
+                                </div>
+                                <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                                    בדוק את ההגדרות בקובץ config.js
+                                </div>
+                            </div>
+                        )}
+
                         {!mapColoniesLoading && !mapColoniesError && mapColoniesLayers.length > 0 && (
                             <div style={{
                                 display: 'grid',
@@ -402,13 +430,43 @@ const OpenLayersMapExample = () => {
                                                 fontSize: '12px',
                                                 textAlign: 'center',
                                                 fontWeight: isActive ? '600' : '500',
-                                                transition: 'all 0.2s ease'
+                                                transition: 'all 0.2s ease',
+                                                transform: isActive ? 'scale(1.02)' : 'scale(1)',
+                                                boxShadow: isActive
+                                                    ? '0 3px 10px rgba(76, 175, 80, 0.3)'
+                                                    : '0 1px 3px rgba(0, 0, 0, 0.1)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isActive) {
+                                                    e.target.style.backgroundColor = '#e9ecef';
+                                                    e.target.style.transform = 'scale(1.01)';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isActive) {
+                                                    e.target.style.backgroundColor = '#f8f9fa';
+                                                    e.target.style.transform = 'scale(1)';
+                                                }
                                             }}
                                         >
                                             🛰️ {layer.config?.name || layer.id}
                                         </button>
                                     );
                                 })}
+                            </div>
+                        )}
+
+                        {/* מידע טכני על שכבות MapColonies */}
+                        {mapColoniesLayers.length > 0 && (
+                            <div style={{
+                                marginTop: '8px',
+                                fontSize: '11px',
+                                color: '#666',
+                                textAlign: 'center'
+                            }}>
+                                {mapColoniesLayers.length} שכבות זמינות •
+                                {mapColoniesLoading && ' 🔄 מעדכן • '}
+                                {currentMapStyle ? ' ✅ מחובר' : ' ⏳ ממתין'}
                             </div>
                         )}
                     </div>
@@ -440,7 +498,8 @@ const OpenLayersMapExample = () => {
                                 padding: '8px',
                                 backgroundColor: visible ? '#f0f8ff' : '#f8f9fa',
                                 borderRadius: '4px',
-                                border: `1px solid ${visible ? '#b3d9ff' : '#dee2e6'}`
+                                border: `1px solid ${visible ? '#b3d9ff' : '#dee2e6'}`,
+                                transition: 'all 0.2s ease'
                             }}>
                                 <input
                                     type="checkbox"
@@ -475,7 +534,7 @@ const OpenLayersMapExample = () => {
                         border: '1px solid #dee2e6'
                     }}>
                         <div style={{ marginBottom: '4px' }}>
-                            🗺️ <strong>מנוע:</strong> OpenLayers
+                            🗺️ <strong>מנוע:</strong> OpenLayers {/* עדכון מMapLibre */}
                         </div>
                         <div style={{ marginBottom: '4px' }}>
                             📐 <strong>הקרנה:</strong> {useMapColonies ? 'WGS84 → Web Mercator' : 'Web Mercator'}
@@ -515,6 +574,11 @@ const OpenLayersMapExample = () => {
                             {selectedFeature.data.properties?.population && (
                                 <div style={{ marginBottom: '4px' }}>
                                     <strong>אוכלוסיה:</strong> {selectedFeature.data.properties.population.toLocaleString()}
+                                </div>
+                            )}
+                            {selectedFeature.data.properties?.type && (
+                                <div style={{ marginBottom: '8px' }}>
+                                    <strong>קטגוריה:</strong> {selectedFeature.data.properties.type}
                                 </div>
                             )}
                         </div>
@@ -602,24 +666,43 @@ const OpenLayersMapExample = () => {
                         💾 שמור מיקום
                     </button>
 
-                    {/* כפתור טעינת שכבות MapColonies */}
+                    {/* כפתורי MapColonies */}
                     {useMapColonies && (
-                        <button
-                            onClick={() => loadMapColoniesLayers()}
-                            disabled={mapColoniesLoading}
-                            style={{
-                                padding: '12px 15px',
-                                backgroundColor: mapColoniesLoading ? '#6c757d' : '#6f42c1',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: mapColoniesLoading ? 'not-allowed' : 'pointer',
-                                fontSize: '14px',
-                                fontWeight: '500'
-                            }}
-                        >
-                            {mapColoniesLoading ? '⏳ טוען...' : '🔄 רענן שכבות'}
-                        </button>
+                        <>
+                            <button
+                                onClick={() => loadMapColoniesLayers()}
+                                disabled={mapColoniesLoading}
+                                style={{
+                                    padding: '12px 15px',
+                                    backgroundColor: mapColoniesLoading ? '#6c757d' : '#6f42c1',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: mapColoniesLoading ? 'not-allowed' : 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    opacity: mapColoniesLoading ? 0.6 : 1
+                                }}
+                            >
+                                {mapColoniesLoading ? '⏳ טוען...' : '🔄 רענן שכבות'}
+                            </button>
+
+                            <button
+                                onClick={() => setShowDebugPanel(prev => !prev)}
+                                style={{
+                                    padding: '12px 15px',
+                                    backgroundColor: '#17a2b8',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '500'
+                                }}
+                            >
+                                🔍 ניפוי באגים
+                            </button>
+                        </>
                     )}
                 </div>
 
@@ -711,6 +794,15 @@ const OpenLayersMapExample = () => {
                 getPolygonProps={getPolygonProps}
                 getLineProps={getLineProps}
             />
+
+            {/* פאנל ניפוי באגים */}
+            {showDebugPanel && (
+                <MapColoniesDebugPanel
+                    isVisible={showDebugPanel}
+                    onClose={() => setShowDebugPanel(false)}
+                    mapColoniesService={null} // אופציונלי
+                />
+            )}
 
             {/* הודעת טעינה */}
             {points.length === 0 && (
