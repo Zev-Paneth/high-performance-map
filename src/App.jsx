@@ -1,12 +1,12 @@
 import React from 'react';
 import './App.css';
-import MapExample from './components/MapExample';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import OpenLayersMapExample from './components/OpenLayersMapExample.jsx';
+import 'ol/ol.css'; // CSS של OpenLayers
 
 function App() {
     return (
         <div className="App" style={{ width: '100%', height: '100%'}}>
-            <MapExample />
+            <OpenLayersMapExample />
         </div>
     );
 }
